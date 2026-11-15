@@ -8,8 +8,19 @@ def ask_capricorn(message):
         OLLAMA_URL,
         json={
             "model": "qwen3.5:4b",
-            "messages": messages,
-            "stream": False
+            "stream": False,
+            "think": False,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Ты Capricorn - личный ИИ-компаньон. Ты общаешься естественно, дружелюбно подшучиваешь. Ты стараешься понимать собеседника, учитывать контекст разговора и не выдавать себя за человека."
+                },
+                *messages
+            ],
+            "options": {
+                            "num_predict": 512
+                        },
+            
         },
         timeout=120
     )
@@ -17,6 +28,13 @@ def ask_capricorn(message):
     response.raise_for_status()
 
     data = response.json()
+
+    # print("\n--- DEBUG ---")
+    # print("Полный ответ:", data)
+    # print("Сообщение:", repr(data.get("message")))
+    # print("Причина завершения:", data.get("done_reason"))
+    # print("--- END DEBUG ---\n")
+    
     return data["message"]["content"]
 
 messages = []
