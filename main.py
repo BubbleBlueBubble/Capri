@@ -1,9 +1,11 @@
 import requests
 
+# URL
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 # Question for AI
 def ask_capricorn(message):
+    # response options
     response = requests.post(
         OLLAMA_URL,
         json={
@@ -27,8 +29,11 @@ def ask_capricorn(message):
 
     response.raise_for_status()
 
+
+    # answer
     data = response.json()
 
+    ## DEBUG
     # print("\n--- DEBUG ---")
     # print("Полный ответ:", data)
     # print("Сообщение:", repr(data.get("message")))
@@ -37,14 +42,17 @@ def ask_capricorn(message):
     
     return data["message"]["content"]
 
+# Memory
 messages = []
 
+# CHAT
 while True:
     user_message = input("Ask: ")
 
     if user_message.lower() == "выход":
         break
 
+    # MEMORY
     messages.append({
         "role": "user",
         "content": user_message
@@ -57,4 +65,5 @@ while True:
         "content": answer
     })
 
+    # ANSWER
     print(f"\nCapricorn: {answer}\n")
