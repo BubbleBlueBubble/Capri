@@ -1,5 +1,14 @@
-import requests
-from memory.database import init_db, save_message, get_last_messages, clear_messages
+import requests, json
+from memory.database import (
+    init_db,
+    save_message,
+    get_last_messages,
+    clear_messages,
+    get_all_facts,
+    save_fact,
+)
+from memory.extractor import extract_facts
+
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen3.5:4b"
@@ -13,7 +22,24 @@ SYSTEM_PROMPT = (
 )
 
 
-def ask_capricorn(messages):
+
+def build_system_prompt(facts):
+    if not facts:
+        return SYSTEM_PROMPT
+
+    facts_text = "\n".join(
+        f"- [{fact['category']}] {fact['key']}: {fact['value']}"
+        for fact in facts
+    )
+    return (
+        f"{SYSTEM_PROMPT}\n\n"
+        "Известные факты о собеседнике "
+        "(используй их естественно, когда они относятся к разговору):\n"
+        f"{facts_text}"
+    )
+
+
+def ask_capricorn(messages, facts):
     response = requests.post(
         OLLAMA_URL,
         json={
@@ -21,7 +47,7 @@ def ask_capricorn(messages):
             "stream": False,
             "think": False,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(facts)},
                 *messages,
             ],
             "options": {
@@ -41,7 +67,7 @@ def main():
     messages = get_last_messages(CONTEXT_LIMIT)
 
     print(f"Loaded {len(messages)} messages from memory.")
-    print("Commands: /clear — очистить память, /e (или 'выход') — выйти.\n")
+    print("Commands: /clear — очистить память, /facts — показать факты, /e (или 'выход') — выйти.\n")
 
     while True:
         try:
@@ -64,10 +90,30 @@ def main():
             print("Память очищена.\n")
             continue
 
+        if command == "/facts":
+            print(get_all_facts())
+            continue
+
         user_data = {"role": "user", "content": user_message}
 
+                # Пытаемся извлечь долгосрочные факты из сообщения
         try:
-            answer = ask_capricorn([*messages, user_data])
+            existing_facts = get_all_facts()
+            new_facts = extract_facts(user_message, existing_facts)
+
+            for fact in new_facts:
+                save_fact(
+                    fact["category"],
+                    fact["key"],
+                    fact["value"],
+                )
+                print(f"Запомнила: {fact['key']} — {fact['value']}")
+
+        except requests.RequestException as error:
+            print(f"\nНе удалось обновить факты памяти: {error}\n")
+
+        try:
+            answer = ask_capricorn([*messages, user_data], get_all_facts())
         except requests.RequestException as error:
             print(f"\nОшибка запроса к Ollama: {error}\n")
             continue

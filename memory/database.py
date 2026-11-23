@@ -145,11 +145,5 @@ def delete_fact(key):
 
 if __name__ == "__main__":
     init_db()
-    # save_fact("tech", "GPU", "AMD Radeon 550 RX")
-    # print("После сохранения:", get_all_facts())
-
-    # save_fact("tech", "gpu", "NVIDIA GeForce RTX 4050")
-    # print("После обновления:", get_all_facts())
-
-    # print("Удаление:", delete_fact("GPU"))
-    # print("После удаления:", get_all_facts())
+    delete_fact("name")
+    save_fact("profile", "name", "KiriKiri")
