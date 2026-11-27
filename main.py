@@ -43,7 +43,7 @@ def build_system_prompt(facts):
     )
 
 
-def ask_capricorn(messages, facts):
+def ask_gigachat(messages, facts):
     role_map = {
         "user": MessagesRole.USER,
         "assistant": MessagesRole.ASSISTANT,
@@ -80,11 +80,48 @@ def ask_capricorn(messages, facts):
     return response.choices[0].message.content.strip()
 
 
+def ask_ollama(messages, facts):
+    response = requests.post(
+        OLLAMA_URL,
+        json={
+            "model": MODEL_NAME,
+            "stream": False,
+            "think": False,
+            "messages": [
+                {"role": "system", "content": build_system_prompt(facts)},
+                *messages,
+            ],
+            "options": {
+                "num_predict": 512,
+            },
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    return response.json()["message"]["content"].strip()
+
+
+def ask_capricorn(messages, facts):
+    provider = os.getenv("LLM_PROVIDER", "gigachat").strip().lower()
+
+    if provider == "ollama":
+        return ask_ollama(messages, facts)
+
+    if provider != "gigachat":
+        raise ValueError(
+            f"Неизвестный LLM_PROVIDER: {provider}. Используй gigachat или ollama."
+        )
+
+    try:
+        return ask_gigachat(messages, facts)
+    except Exception as error:
+        print(f"\nGigaChat недоступен, переключаюсь на Ollama: {error}\n")
+        return ask_ollama(messages, facts)
+
+
 def main():
     init_db()
     messages = get_last_messages(CONTEXT_LIMIT)
-
-    print(f"Loaded {len(messages)} messages from memory.")
     print("Commands: /clear — очистить память, /facts — показать факты, /e (или 'выход') — выйти.\n")
 
     while True:
@@ -133,7 +170,7 @@ def main():
         try:
             answer = ask_capricorn([*messages, user_data], get_all_facts())
         except Exception as error:
-            print(f"\nОшибка запроса к GigaChat: {error}\n")
+            print(f"\nОшибка запроса к моделям: {error}\n")
             continue
 
         assistant_data = {"role": "assistant", "content": answer}
