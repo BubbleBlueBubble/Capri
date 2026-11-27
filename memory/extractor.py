@@ -63,21 +63,4 @@ def extract_facts(user_message, existing_facts=None):
 
 
 if __name__ == "__main__":
-    tests = [
-        (
-            "У меня ноутбук с RTX 4050 и я разрабатываю ИИ-компаньона Capricorn на Python.",
-            None,
-        ),
-        (
-            "Привет! Объясни, чем список отличается от кортежа?",
-            None,
-        ),
-        (
-            "Кстати, я обновил видеокарту на RTX 4070.",
-            [{"category": "tech", "key": "gpu", "value": "RTX 4050"}],
-        ),
-    ]
-
-    for message, facts in tests:
-        print(f"\nСообщение: {message}")
-        print("Результат:", extract_facts(message, facts))
+    pass

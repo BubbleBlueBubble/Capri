@@ -1,4 +1,7 @@
-import requests, json
+import requests, os
+from dotenv import load_dotenv
+from gigachat import GigaChat
+from gigachat.models import Chat, Messages, MessagesRole
 from memory.database import (
     init_db,
     save_message,
@@ -9,6 +12,7 @@ from memory.database import (
 )
 from memory.extractor import extract_facts
 
+load_dotenv()
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen3.5:4b"
@@ -40,26 +44,40 @@ def build_system_prompt(facts):
 
 
 def ask_capricorn(messages, facts):
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL_NAME,
-            "stream": False,
-            "think": False,
-            "messages": [
-                {"role": "system", "content": build_system_prompt(facts)},
-                *messages,
-            ],
-            "options": {
-                "num_predict": 512,
-            },
-        },
-        timeout=120,
-    )
-    response.raise_for_status()
+    role_map = {
+        "user": MessagesRole.USER,
+        "assistant": MessagesRole.ASSISTANT,
+    }
 
-    data = response.json()
-    return data["message"]["content"].strip()
+    giga_messages = [
+        Messages(
+            role=MessagesRole.SYSTEM,
+            content=build_system_prompt(facts),
+        )
+    ]
+
+    for message in messages:
+        giga_messages.append(
+            Messages(
+                role=role_map[message["role"]],
+                content=message["content"],
+            )
+        )
+
+    chat = Chat(
+        model="GigaChat-3-Ultra",
+        messages=giga_messages,
+    )
+
+    with GigaChat(
+        base_url=os.getenv("GIGACHAT_BASE_URL"),
+        credentials=os.getenv("GIGACHAT_CREDENTIALS"),
+        scope=os.getenv("GIGACHAT_SCOPE"),
+        ca_bundle_file=os.getenv("GIGACHAT_CA_BUNDLE_FILE"),
+    ) as client:
+        response = client.chat(chat)
+
+    return response.choices[0].message.content.strip()
 
 
 def main():
@@ -81,7 +99,7 @@ def main():
 
         command = user_message.lower()
 
-        if command in ("выход", "/e"):
+        if command in ("выход", "/e", "/exit"):
             break
 
         if command == "/clear":
@@ -114,8 +132,8 @@ def main():
 
         try:
             answer = ask_capricorn([*messages, user_data], get_all_facts())
-        except requests.RequestException as error:
-            print(f"\nОшибка запроса к Ollama: {error}\n")
+        except Exception as error:
+            print(f"\nОшибка запроса к GigaChat: {error}\n")
             continue
 
         assistant_data = {"role": "assistant", "content": answer}
