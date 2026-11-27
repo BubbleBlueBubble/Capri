@@ -142,8 +142,3 @@ def delete_fact(key):
         return cursor.rowcount > 0
     finally:
         connection.close()
-
-if __name__ == "__main__":
-    init_db()
-    delete_fact("name")
-    save_fact("profile", "name", "KiriKiri")
