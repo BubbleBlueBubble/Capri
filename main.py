@@ -105,6 +105,7 @@ def ask_capricorn(messages, facts):
     provider = os.getenv("LLM_PROVIDER", "gigachat").strip().lower()
 
     if provider == "ollama":
+        print("\n[Провайдер] Основной чат: Ollama.")
         return ask_ollama(messages, facts)
 
     if provider != "gigachat":
@@ -113,10 +114,18 @@ def ask_capricorn(messages, facts):
         )
 
     try:
-        return ask_gigachat(messages, facts)
+        answer = ask_gigachat(messages, facts)
+        print("\n[Провайдер] Ответ получен от GigaChat.")
+        return answer
     except Exception as error:
-        print(f"\nGigaChat недоступен, переключаюсь на Ollama: {error}\n")
-        return ask_ollama(messages, facts)
+        print(
+            f"\n[Провайдер] GigaChat не сработал: {error}\n"
+            "Переключаюсь на Ollama."
+        )
+        answer = ask_ollama(messages, facts)
+        print("[Провайдер] Ответ получен от Ollama (резервный вариант).")
+        return answer
+
 
 
 def main():
